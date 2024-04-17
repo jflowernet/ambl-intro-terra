@@ -1,16 +1,19 @@
 ---
 title: "Introduction to rasters with `terra`"
 author: "Jason Flower, UC Santa Barbara"
-date: "2024-04-17"
+date: "`r Sys.Date()`"
 output:
   html_document: 
     code_folding: show
-    keep_md: true
 ---
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
 
-
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
 
 This workshop will provide you with an introduction to manipulating raster spatial data using the R package `terra`. `terra` and its predecessor, `raster` are widely used for spatial data manipulation in R. No prior experience of spatial data is assumed, but this short workshop will not have time to delve into some important aspects of spatial data such as projections. 
 
@@ -27,10 +30,8 @@ This workshop will provide you with an introduction to manipulating raster spati
 
 You will need the `terra` package installed, which can be done by running `install.packages("terra")`. If you have problems, there are more details about installing [here](https://rspatial.github.io/terra/index.html). We can then load it
 
-
-```r
+```{r}
 library(terra)
-#> terra 1.7.71
 ```
 
 # Spatial data
@@ -40,8 +41,7 @@ There are basically two types of spatial data: vector and raster
 ## Vector data 
 Can be points, lines or polygons. Useful for representing things like survey locations, rivers, and boundaries.
 
-
-```{.r .fold-hide}
+```{r class.source='fold-hide'}
 pts <- rbind(c(3.2,4), c(3,4.6), c(3.8,4.4), c(3.5,3.8), c(3.4,3.6), c(3.9,4.5)) |>
   vect()
 
@@ -55,11 +55,6 @@ par(mfrow = c(1,3))
 plot(pts, axes = F, main = "Points")
 plot(lnes, col = "blue", axes = F, main = "Lines")
 plot(lux, "NAME_2", col = terrain.colors(12), las = 1, axes = F, main = "Polygons")
-```
-
-![](README_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
-
-```{.r .fold-hide}
 
 par(mfrow = c(1,3))
 ```
@@ -67,8 +62,7 @@ par(mfrow = c(1,3))
 ## Raster data 
 Raster data is a grid of rectangles. Each rectangle must have a value. Rasters are often used for data such as elevation, temperature and habitat maps. 
 
-
-```{.r .fold-hide}
+```{r class.source='fold-hide'}
 ele <- system.file("ex/elev.tif", package = "terra") |>
   rast() |>
   aggregate(fact = 2)
@@ -78,9 +72,8 @@ plot(ele, las = 1, main = "Elevation map")
 ele |>
   as.polygons(aggregate = FALSE, na.rm = FALSE) |>
   lines(col = "grey40", lwd = 0.2)
-```
 
-![](README_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+```
 
 
 
