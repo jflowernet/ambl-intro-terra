@@ -76,8 +76,5 @@ ele |>
 
 ```
 
-## `terra` package
-
-The [`terra`](https://rspatial.github.io/terra/index.html) package is widely used for spatial data manipulation.
 
 
