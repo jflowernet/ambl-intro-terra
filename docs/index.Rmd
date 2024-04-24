@@ -67,9 +67,9 @@ elev <- system.file("ex/elev.tif", package = "terra") |>
   rast() |>
   aggregate(fact = 2)
 
-plot(ele, las = 1, main = "Elevation map")
+plot(elev, las = 1, main = "Elevation map")
 
-ele |>
+elev |>
   as.polygons(aggregate = FALSE, na.rm = FALSE) |>
   lines(col = "grey40", lwd = 0.2)
 
@@ -83,6 +83,9 @@ Lets start by creating our own raster from scratch. We can create rasters from s
 ras <- rast(xmin = 0, xmax = 10, ymin = 0, ymax = 10, resolution = 2)
 ```
 
+```{r fig.width=6, echo=FALSE}
+knitr::include_graphics("../figs/terra_raster_properties_figure.png")
+```
 
 
 Lets load some raster data so we can see what it looks like. The `terra` package has several datasets built into it, like the elevation data for Luxembourg (don't ask me why) you see above. We load raster data using `rast()` function; if you are switching from using the `raster` package this is the `terra` version of `raster()`:
