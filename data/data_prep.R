@@ -69,4 +69,16 @@ mean_monthly_temp$yearmonth <- rownames(mean_monthly_temp)
 
 plot(mean_monthly_temp$mean, type = "b")
 
-#save
+#get a single day's data for the end of the time series above for use in teaching
+download.file("https://pae-paha.pacioos.hawaii.edu/erddap/griddap/dhw_5km.nc?CRW_SST%5B(2023-05-30T12:00:00Z):1:(2023-05-31T12:00:00Z)%5D%5B(-5):1:(-45)%5D%5B(110):1:(165)%5D", tmp)
+
+sst_one_day <- rast(tmp) |>
+  subset(2) |>
+  flip()
+
+plot(sst_one_day)
+
+time(sst_one_day) <- NULL
+
+#save a single rast from the daily set for data
+writeRaster(sst_one_day, "data/gbr_temp_2023_05_31.tif", overwrite = T)

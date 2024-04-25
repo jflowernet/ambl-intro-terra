@@ -20,6 +20,7 @@ This workshop will provide you with an introduction to manipulating raster spati
 `terra`'s predecessor `raster` had many of the same functions as `terra`, and I will mention how functions have changed or been renamed which might be helpful for people migrating from using `raster`. In the words of the creator of both packages: `terra` is simpler, faster and can do more, so definitely switch to `terra` if you are still using `raster`!
 
 *Resources*:
+
 - The official `terra` tutorial page is https://rspatial.org/spatial/index.html  
 - An excellent reference to all the functions in `terra` is https://rspatial.github.io/terra/reference/terra-package.html 
 
@@ -60,7 +61,7 @@ par(mfrow = c(1,3))
 ```
 
 ## Raster data 
-Raster data is a grid of rectangles. Each rectangle must have a value. Rasters are often used for data such as elevation, temperature and habitat maps. 
+Raster data is a grid of rectangles, normally called cells. Each cell can have a value. Rasters are often used to store elevation, temperature, and habitat data, to name just a few examples. 
 
 ```{r class.source='fold-hide'}
 elev <- system.file("ex/elev.tif", package = "terra") |>
@@ -77,25 +78,144 @@ elev |>
 
 ## Getting started
 
-Lets start by creating our own raster from scratch. We can create rasters from scratch and load them from a file using the function `rast()`. We can create a simple raster by specifying the x and y limits for the raster and the resolution (how big is each rectangle)
+Lets start by creating our own raster. We can create rasters from scratch and load them from a file using the function `rast()`. We can create a simple raster by specifying the x and y limits for the raster and the resolution (how big each rectangle is).
+
+*`raster` users note*: `rast()` replaces `raster()`
 
 ```{r}
+#create raster
 ras <- rast(xmin = 0, xmax = 10, ymin = 0, ymax = 10, resolution = 2)
+
+#see what we've created
+ras
 ```
+
+The figure below shows what most of the terms above refer to. As you can see, you don't need to use all the terms to define a raster. Couple of other points:
+
+- Every object in R has a class, and as you can see, rasters in terra are of class `SpatRaster`. 
+- We did not tell `rast()` which coordinate reference system to use, so it defaults to using longitude latitude coordinates, also known as EPSG 4326.
+
+*`raster` users note*: rasters are now `SpatRaster` class not `RasterLayer`
 
 ```{r fig.width=6, echo=FALSE}
 knitr::include_graphics("../figs/terra_raster_properties_figure.png")
 ```
 
+But what does the raster we created actually look like when plotted. Lets see. All we need is `plot()`
 
-Lets load some raster data so we can see what it looks like. The `terra` package has several datasets built into it, like the elevation data for Luxembourg (don't ask me why) you see above. We load raster data using `rast()` function; if you are switching from using the `raster` package this is the `terra` version of `raster()`:
-
-
-```{r}
-f <- system.file("ex/elev.tif", package = "terra") #get the filepath to the elevation data file
-
-#load the data
-elev <- rast(f)
+```{r, out.width=3}
+plot(ras)
 ```
 
+Why is there no plot? Because the raster we created is empty; there are no values associated with the the cells. Lets assign some values to each cell in the raster and try again. First we will find out how many cells are in our raster using `ncell()
+
+```{r}
+ncell(ras)
+```
+
+Ok, now we know this lets give our raster cells values from 1 to 25:
+
+```{r}
+values(ras) <- 1:25
+
+plot(ras)
+```
+
+Now our raster has values, we get a plot! Each cell has an integer value between 1 and 25, with cell values increasing from left to right and top to bottom. So the values started being "filled up" in the top left, and finished in the bottom right.
+
+Lets have another look at our raster properties
+
+```{r}
+ras
+```
+
+We can now see a few extra pieces of information compared to last time:
+
+- `sources(s)`: where is the data held on your computer? It says `memory` for this raster, indicating that the raster is in the computer memory. Rasters can also be held on your hard disk, in which case this will be the file name of the raster. We won't go into details here, but `terra` is smart about loading data into memory; only doing so if it thinks it will have enough space, since most computers have much less memory than hard disk space.
+- `name`: what is the raster called?
+- `min value` & `max value`: the minimum and maximum values in the raster
+
+Ok, now we understand the basic structure of a raster, lets load some data.
+
+# Exploring some real world data
+Sea surface temperature can be measured by satellites, and the National Oceanic and Atmospheric Administration (NOAA) in the U.S. has been doing so since 1972! Daily sea surface temperature for the world from 1985 to the present is available via the [NOAA Coral Reef Watch website](https://coralreefwatch.noaa.gov/product/5km/index_5km_sst.php). 
+
+We are going to explore sea surface temperature (SST) data for the Great Barrier Reef in Australia. All the data is in the `data` folder, and full details on how I got the data are in the `data_prep.R` script in that folder.
+
+## Load the data
+
+We can use the same `rast()` command that we used to make our own raster before. The data is stored in GeoTiff (.tif) format, which is widely used for raster data. You can get a full list of data formats that `terra` can read and write by running `gdal(drivers = TRUE)`.
+
+```{r}
+sst <- rast("../data/gbr_temp_2023_05_31.tif")
+sst
+```
+
+If the data loaded correctly, you should see the properties as shown above. We have all the properties I described earlier, but there are a couple of things worth noting:
+
+- the coordinate reference system (crs) is in lon/ lat, which means the unit of measurement is degrees. So the extent coordinates are in degrees, i.e. xmin = `r sprintf("%1.0f", as.numeric(ext(sst)$xmin))`$^\circ$, xmax = `r sprintf("%0.2f", as.numeric(ext(sst)$xmax))`$^\circ$, ymin = `r sprintf("%0.2f", as.numeric(ext(sst)$ymin))`$^\circ$ and ymax =  `r sprintf("%0.2f", as.numeric(ext(sst)$xmax))`$^\circ$, and resolution is also in degree, i.e `r sprintf("%0.2f", res(sst)[1])`$^\circ$.
+- the `source` is the filename of the data we loaded. This means it is on disk, not in memory. We can double check by running `inMemory(sst)` which should return `r inMemory(sst)`.
+
+## Plot the data
+
+We want to plot our data to see what it looks like. This is the first thing you should do with almost any data to do a quick check that it looks right
+
+```{r}
+plot(sst)
+```
+
+The values in the legend seem about what we would expect in tropical water, temperatures ranging from ~18 - 28$^\circ$ Celsius.
+
+The white areas of the plot are cells with NA values, which in this case are land; there are no sea surface temperature data for the land! We can see Australia taking up much of the plot and Papua New Guinea to the north.
+
+We can set the NA values to a different colour if we want, which can be helpful if you want to see some NA cells that are getting lost against the other colours.
+
+```{r}
+plot(sst, colNA = "blue")
+```
+
+Note that every cell within our raster has to have a value. 
+
+## Load and plot some vector data
+To put our raster data in context, lets plot the Great Barrier Reef Marine Park boundary (dowloaded from [here](https://geohub-gbrmpa.hub.arcgis.com/datasets/bac38dff14ae4ff9a1c9de5d234e26f8_30/explore)). This is vector data. You might be used to handling vector data with the `sf` package, but `terra` can also be used for vector data manipulation. We can load a vector using `vect()`
+
+*`raster` users note*: `terra` has its own methods for handling vector data unlike `raster` which used the `sp` package for vector data handling. Vector data in `terra` are `SpatVector` objects; different from `sf` objects.
+
+```{r}
+#load the park boundary
+gbr_boundary <- vect("../data/Great_Barrier_Reef_Marine_Park_Boundary_94_-8322827438515261938.gpkg")
+
+#plot the SST data and the boundary on top
+plot(sst)
+lines(gbr_boundary) #this plots the vector lines over the raster data
+```
+
+
+## Crop and mask data
+
+The data we have at the moment is for a much larger area than just the Great Barrier Reef marine park. To get only that data we need to crop and mask the raster data using the marine park boundary.
+
+Cropping means that keep only the data inside the **extent** of the vector we are using. Mask means that all the data outside the vector is set to NA or some other value we specify. Lets have a look how this works.
+
+First lets have a look at the extent of the marine park boundary. We can get the extent of an object using `ext()`. We need to convert this into a `SpatVector` object for plotting using `vect()`
+
+```{r}
+gbr_boundary_extent <- ext(gbr_boundary) |>
+  vect()
+
+plot(sst)
+lines(gbr_boundary)
+lines(gbr_boundary_extent, col = "blue")
+```
+
+So when we crop, we get only the area within the blue box.
+
+We crop using the `crop()` function, with raster we want to crop first and the vector we are cropping with second.
+
+```{r}
+sst_cropped <- crop(sst, gbr_boundary)
+
+plot(sst_cropped)
+lines(gbr_boundary)
+```
 
