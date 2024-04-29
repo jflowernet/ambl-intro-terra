@@ -4,6 +4,8 @@ author: "Jason Flower, UC Santa Barbara"
 date: "`r Sys.Date()`"
 output:
   html_document: 
+    toc: TRUE
+    toc_float: TRUE
     code_folding: show
 ---
 
@@ -76,7 +78,7 @@ elev |>
 
 ```
 
-## Getting started
+# Getting started
 
 Lets start by creating our own raster. We can create rasters from scratch and load them from a file using the function `rast()`. We can create a simple raster by specifying the x and y limits for the raster and the resolution (how big each rectangle is).
 
@@ -183,7 +185,7 @@ To put our raster data in context, lets plot the Great Barrier Reef Marine Park 
 
 ```{r}
 #load the park boundary
-gbr_boundary <- vect("../data/Great_Barrier_Reef_Marine_Park_Boundary_94_-8322827438515261938.gpkg")
+gbr_boundary <- vect("../data/gbr_MPA_boundary.gpkg")
 
 #plot the SST data and the boundary on top
 plot(sst)
@@ -197,9 +199,11 @@ The data we have at the moment is for a much larger area than just the Great Bar
 
 Cropping means that keep only the data inside the **extent** of the vector we are using. Mask means that all the data outside the vector is set to NA or some other value we specify. Lets have a look how this works.
 
-First lets have a look at the extent of the marine park boundary. We can get the extent of an object using `ext()`. We need to convert this into a `SpatVector` object for plotting using `vect()`
+First lets have a look at the extent of the marine park boundary. We can get the extent of an object using `ext()`. We need to convert this into a `SpatVector` object for plotting using `vect()`. We only need to do this for plotting; when we crop, we can just use marine park boundary vector.
 
-```{r}
+*`raster` users note*: `ext()` replaces `extent()`
+
+```{r fig.cap="Cropping means we remove everything outside the extent (blue box) of our polygon. Masking sets all values outside our polygon to NA."}
 gbr_boundary_extent <- ext(gbr_boundary) |>
   vect()
 
@@ -210,12 +214,169 @@ lines(gbr_boundary_extent, col = "blue")
 
 So when we crop, we get only the area within the blue box.
 
-We crop using the `crop()` function, with raster we want to crop first and the vector we are cropping with second.
+We crop using the `crop()` function, using the raster we want to crop as the first argument and the vector we are cropping with second.
 
 ```{r}
+#crop
 sst_cropped <- crop(sst, gbr_boundary)
 
+#plot
 plot(sst_cropped)
 lines(gbr_boundary)
+```
+
+Now we cropped our raster, we can mask it so that we only have values for the area within the Great Barrier Reef marine park boundary. We do this using `mask`
+
+```{r}
+#mask
+sst_cropped_masked <- mask(sst_cropped, gbr_boundary)
+
+#plot
+plot(sst_cropped_masked)
+lines(gbr_boundary)
+```
+
+So now we only see raster values for cells that are within the Great Barrier Reef marine park boundary. But remember that the areas that are white, still have values in our raster, they are just `NA` values.
+
+Often we want to `crop` and `mask` one after the other, and you can do this in one command using `crop(sst, gbr_boundary, mask = TRUE)`. 
+
+For reference, here is a figure comparing what `crop`, `mask` and `crop(mask = TRUE)` do:
+
+```{r class.source='fold-hide'}
+par(mfrow = c(2,2))
+
+plot(sst, main = "Original raster")
+lines(gbr_boundary)
+
+plot(sst_cropped, main = "Cropped")
+lines(gbr_boundary)
+
+sst |>
+  mask(gbr_boundary) |>
+  plot(main = "Masked")
+lines(gbr_boundary)
+
+plot(crop(sst, gbr_boundary, mask = TRUE), main = "Cropped and masked")
+lines(gbr_boundary)
+
+par(mfrow = c(1,1))
+```
+
+## Raster values
+
+Now we have cropped and masked our original raster to get only data within the area we are interested in, we can start exploring the values. `terra` has several functions that can help us do this easily.
+
+### Histogram
+
+We can get a histogram of the temperature values using the `hist()` function.
+
+```{r}
+hist(sst_cropped_masked)
+```
+
+The x-axis has is our raster values measurement; in our case temperature in degrees Celsius. The y-axis is frequency; how many cells in our raster have those values.
+
+You can change modify the histogram using the same arguments you use with `hist()` in base R, for example lets increase the number of bars we have:
+
+```{r}
+hist(sst_cropped_masked, breaks = 100)
+```
+
+### Frequency table 
+We can get a frequency table of values in our raster using `freq()`. This is essentially the same information that is shown in the histogram in graphical format.
+
+```{r}
+freq(sst_cropped_masked)
+```
+
+The default is to round values to the nearest integer. To get more integers we can do:
+
+```{r}
+freq(sst_cropped_masked, digits = 1) |>
+  head() #this is a long table: just show the first 10 values
+```
+
+We can also check how many NA values are in our raster:
+
+```{r}
+freq(sst_cropped_masked, value = NA)
+```
+
+### Statistics
+
+We can use the same `summary()` command that is used in base R, to get a summary of the statistical information for an entire raster.
+
+```{r}
+summary(sst_cropped_masked)
+```
+
+These values are, for example, the mean value of all raster values, with NA values excluded.
+
+To get individual statistical values, we need the function `global()`. For example to get the mean value of a raster:
+
+```{r}
+global(sst_cropped_masked, "mean", na.rm = TRUE)
+```
+
+We need to use `na.rm = TRUE` otherwise `NA` values are included and the mean is `NaN`. The object returned by `global` is a data frame, so if you want just the value, you need to do:
+
+```{r}
+sst_mean <- as.numeric(global(sst_cropped_masked, "mean", na.rm = TRUE))
+
+sst_mean
+```
+
+*`raster` users note*: `global()` replaces `cellStats()`, and the default is `na.rm = FALSE`, whereas the default for `cellStats()` was `na.rm = TRUE`.
+
+### Classifying
+
+We might want to break our raster values into groups. For example, we could say that all temperatures that are below the mean temperature are classified as "cooler" and all temperatures above the mean are "warmer". We can do this using the `classify` function.
+
+```{r}
+#first we create a matrix that will be used for the classification
+# all values >= 0 and less than the mean become 1
+# all values greater than the mean become 2
+reclass_matrix <- c(0, sst_mean, 1,
+                    sst_mean, Inf, 2) |>
+  matrix(ncol = 3, byrow = TRUE)
+
+#now we classify our raster using this matrix
+sst_reclassed <- classify(sst_cropped_masked, reclass_matrix)
+
+#plot the result
+plot(sst_reclassed)
+```
+
+A gut check tells us this looks right; the warmer areas are in the north, nearer to the equator. 
+
+This plot is ok, but it would be better if the colours were more appropriate and the legend gave some useful information. 
+
+```{r}
+plot(sst_reclassed, col = c("blue", "red"), plg = list(legend = c("Cooler", "Warmer")), las = 1) #the las = 1 argument just rotates the y-axis labels so that they are horizontal
+```
+
+### Raster math
+
+The great thing about rasters are you can do maths with them! For example, doing `sst_reclassed + 1` just adds one to each raster value, and doing `sst_reclassed*2` multiplies each raster value by two.
+
+As an example, lets convert our temperature data into Fahrenheit for our confused colleagues in the U.S. The conversion from Celsius to Fahrenheit is: Fahrenheit = (Celsius * 1.8) + 32.
+
+```{r}
+#do the conversion
+sst_fahrenheit <- (sst_cropped_masked*1.8) + 32
+
+#plot our new raster
+plot(sst_fahrenheit)
+```
+
+
+## Nice maps
+
+Lets also make the map a bit prettier, choosing more appropriate colours and adding a scale bar
+
+```{r}
+plot(sst_fahrenheit, col = hcl.colors(50, palette = "RdYlBu", rev = TRUE)) #see ?hcl.colors for more info on colour palettes. rev= TRUE because we want to reverse the palette: red colours are the highest values and blue the lowest
+lines(gbr_boundary)
+sbar(d = 400, type = "bar", divs = 2, below = "km") #400km bar with 2 divisions and "km" written below
 ```
 

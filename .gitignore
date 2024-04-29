@@ -51,3 +51,4 @@ rsconnect/
 #data
 data/gbr_area_sst_2020_2023.nc
 data/gbr_daily_temp.tif*
+data/Great_Barrier_Reef_Marine_Park_Boundary_94_-8322827438515261938.gpkg
