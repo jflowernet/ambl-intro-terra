@@ -4,7 +4,15 @@ library(terra)
 
 #extent of GBR found from the Great Barrier Reef Marine Park boundary, downloaded from: https://geohub-gbrmpa.hub.arcgis.com/datasets/bac38dff14ae4ff9a1c9de5d234e26f8_30/explore
 
-gbr_boundary <- vect("data/Great_Barrier_Reef_Marine_Park_Boundary_94_-8322827438515261938.gpkg")
+#Steps below for saving GBR MPA Boundary to 4326 lon/lat; done once
+gbr_boundary_original <- vect("data/Great_Barrier_Reef_Marine_Park_Boundary_94_-8322827438515261938.gpkg")
+
+gbr_boundary <- project(gbr_boundary_original, "EPSG:4326") #project to 4326 for the workshop
+
+writeVector(gbr_boundary, "data/gbr_MPA_boundary.gpkg")
+
+gbr_boundary <- vect("data/gbr_MPA_boundary.gpkg")
+
 ext(gbr_boundary)
 
 #sea surface temperature data for an area covering the Great Barrier Reef retrieved from the NOAA ERDDAP server: https://coastwatch.pfeg.noaa.gov/erddap/griddap/NOAA_DHW.html
