@@ -1,0 +1,7 @@
+.rasterbox {
+  padding: 1em;
+  background: white;
+  color: black;
+  border: 2px solid black;
+  border-radius: 10px;
+}

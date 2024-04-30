@@ -90,3 +90,21 @@ time(sst_one_day) <- NULL
 
 #save a single rast from the daily set for data
 writeRaster(sst_one_day, "data/gbr_temp_2023_05_31.tif", overwrite = T)
+
+### Script for data prep for GBR zones ##
+
+#data was downloaded from GBRMPA: https://geohub-gbrmpa.hub.arcgis.com/datasets/6dd0008183cc49c490f423e1b7e3ef5d_53/
+
+gbr_zones <- vect("data/Great_Barrier_Reef_Marine_Park_Zoning_20_4418126048110066699.gpkg")
+
+sort(unique(gbr_zones$TYPE)) #list reef names
+
+#get only habitat protection zones
+hpzs <- subset(gbr_zones, TYPE == "Habitat Protection Zone", NSE = TRUE)
+
+plet(hpzs, "NAME") #can click on zones to get the names: I'm going to filter for just two big-ish ones for the workshop
+
+hpzs_subset <- subset(hpzs, NAME %in% c("HP-21-5296", "HP-16-5126" ), NSE = TRUE) |>
+  rev() # reverse so that first row is the northernmost zone - make life easier for plotting
+
+writeVector(hpzs_subset, "data/gbr_habitat_protection_zones.gpkg", overwrite = TRUE)

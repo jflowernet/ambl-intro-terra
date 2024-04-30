@@ -4,6 +4,7 @@ author: "Jason Flower, UC Santa Barbara"
 date: "`r Sys.Date()`"
 output:
   html_document: 
+    css: style.css
     toc: TRUE
     toc_float: TRUE
     code_folding: show
@@ -82,7 +83,10 @@ elev |>
 
 Lets start by creating our own raster. We can create rasters from scratch and load them from a file using the function `rast()`. We can create a simple raster by specifying the x and y limits for the raster and the resolution (how big each rectangle is).
 
-*`raster` users note*: `rast()` replaces `raster()`
+::: {.rasterbox}
+`raster` users note: `rast()` replaces `raster()`
+:::
+
 
 ```{r}
 #create raster
@@ -97,7 +101,9 @@ The figure below shows what most of the terms above refer to. As you can see, yo
 - Every object in R has a class, and as you can see, rasters in terra are of class `SpatRaster`. 
 - We did not tell `rast()` which coordinate reference system to use, so it defaults to using longitude latitude coordinates, also known as EPSG 4326.
 
-*`raster` users note*: rasters are now `SpatRaster` class not `RasterLayer`
+::: {.rasterbox}
+`raster` users note: rasters are now `SpatRaster` class not `RasterLayer`
+:::
 
 ```{r fig.width=6, echo=FALSE}
 knitr::include_graphics("../figs/terra_raster_properties_figure.png")
@@ -181,7 +187,9 @@ Note that every cell within our raster has to have a value.
 ## Load and plot some vector data
 To put our raster data in context, lets plot the Great Barrier Reef Marine Park boundary (dowloaded from [here](https://geohub-gbrmpa.hub.arcgis.com/datasets/bac38dff14ae4ff9a1c9de5d234e26f8_30/explore)). This is vector data. You might be used to handling vector data with the `sf` package, but `terra` can also be used for vector data manipulation. We can load a vector using `vect()`
 
-*`raster` users note*: `terra` has its own methods for handling vector data unlike `raster` which used the `sp` package for vector data handling. Vector data in `terra` are `SpatVector` objects; different from `sf` objects.
+::: {.rasterbox}
+`raster` users note: `terra` has its own methods for handling vector data unlike `raster` which used the `sp` package for vector data handling. Vector data in `terra` are `SpatVector` objects; different from `sf` objects.
+:::
 
 ```{r}
 #load the park boundary
@@ -201,7 +209,9 @@ Cropping means that keep only the data inside the **extent** of the vector we ar
 
 First lets have a look at the extent of the marine park boundary. We can get the extent of an object using `ext()`. We need to convert this into a `SpatVector` object for plotting using `vect()`. We only need to do this for plotting; when we crop, we can just use marine park boundary vector.
 
-*`raster` users note*: `ext()` replaces `extent()`
+::: {.rasterbox}
+`raster` users note: `ext()` replaces `extent()`
+:::
 
 ```{r fig.cap="Cropping means we remove everything outside the extent (blue box) of our polygon. Masking sets all values outside our polygon to NA."}
 gbr_boundary_extent <- ext(gbr_boundary) |>
@@ -293,7 +303,7 @@ The default is to round values to the nearest integer. To get more integers we c
 
 ```{r}
 freq(sst_cropped_masked, digits = 1) |>
-  head() #this is a long table: just show the first 10 values
+  head() #this is a long table: just show the first few values
 ```
 
 We can also check how many NA values are in our raster:
@@ -326,11 +336,17 @@ sst_mean <- as.numeric(global(sst_cropped_masked, "mean", na.rm = TRUE))
 sst_mean
 ```
 
-*`raster` users note*: `global()` replaces `cellStats()`, and the default is `na.rm = FALSE`, whereas the default for `cellStats()` was `na.rm = TRUE`.
+::: {.rasterbox}
+`raster` users note: `global()` replaces `cellStats()`, and the default is `na.rm = FALSE`, whereas the default for `cellStats()` was `na.rm = TRUE`.
+:::
 
 ### Classifying
 
 We might want to break our raster values into groups. For example, we could say that all temperatures that are below the mean temperature are classified as "cooler" and all temperatures above the mean are "warmer". We can do this using the `classify` function.
+
+::: {.rasterbox}
+`raster` users note: `classify()` replaces `reclassify()`
+:::
 
 ```{r}
 #first we create a matrix that will be used for the classification
@@ -375,8 +391,155 @@ plot(sst_fahrenheit)
 Lets also make the map a bit prettier, choosing more appropriate colours and adding a scale bar
 
 ```{r}
-plot(sst_fahrenheit, col = hcl.colors(50, palette = "RdYlBu", rev = TRUE)) #see ?hcl.colors for more info on colour palettes. rev= TRUE because we want to reverse the palette: red colours are the highest values and blue the lowest
+plot(sst_fahrenheit, col = hcl.colors(50, palette = "RdYlBu", rev = TRUE), las = 1) #see ?hcl.colors for more info on colour palettes. rev= TRUE because we want to reverse the palette: red colours are the highest values and blue the lowest
 lines(gbr_boundary)
 sbar(d = 400, type = "bar", divs = 2, below = "km") #400km bar with 2 divisions and "km" written below
+```
+
+<details>
+<summary>More info on colour palettes</summary>
+
+Code is directly from the `?hcl.colors()` Examples. This 
+```{r class.source='fold-hide'}
+## color swatches for HCL palettes
+hcl.swatch <- function(type = NULL, n = 5, nrow = 11,
+  border = if (n < 15) "black" else NA) {
+    palette <- hcl.pals(type)
+    cols <- sapply(palette, hcl.colors, n = n)
+    ncol <- ncol(cols)
+    nswatch <- min(ncol, nrow)
+
+    par(mar = rep(0.1, 4),
+        mfrow = c(1, min(5, ceiling(ncol/nrow))),
+        pin = c(1, 0.5 * nswatch),
+        cex = 0.7)
+
+    while (length(palette)) {
+        subset <- 1:min(nrow, ncol(cols))
+        plot.new()
+        plot.window(c(0, n), c(0, nrow + 1))
+        text(0, rev(subset) + 0.1, palette[subset], adj = c(0, 0))
+        y <- rep(subset, each = n)
+        rect(rep(0:(n-1), n), rev(y), rep(1:n, n), rev(y) - 0.5,
+             col = cols[, subset], border = border)
+        palette <- palette[-subset]
+        cols <- cols[, -subset, drop = FALSE]
+    }
+
+    par(mfrow = c(1, 1), mar = c(5.1, 4.1, 4.1, 2.1), cex = 1)
+}
+```
+
+```{r fig.width=8, fig.height=6}
+hcl.swatch("qualitative")
+hcl.swatch("sequential")
+hcl.swatch("diverging")
+hcl.swatch("divergingx")
+```
+
+</details>
+
+## Rasterlayers
+
+A very useful feature of rasters is that they can have many layers. These layers often represent different time periods, such as days or months. Lets look at a multi-layer raster which has the same temperature data that we have been looking at, but each layer represents the mean temperature in a month. We load the multi-layer raster in the same way as any other raster, using `rast()`:
+
+```{r}
+sst_monthly <- rast("../data/gbr_monthly_temp.tif")
+
+sst_monthly
+```
+
+We can that the raster has `r nlyr(sst_monthly)` layers. Lets plot it to see what we get.
+
+```{r}
+plot(sst_monthly)
+```
+
+We get one map for each raster layer, but not all the data because you wouldn't be able to see the maps if they were much smaller. We can plot a specific subset of the data using double square brackets `[[]]` to select a set of layers. For example, if we wanted the last 4 layers in the raster, which are layers 33 to 36:
+
+```{r}
+plot(sst_monthly[[33:36]])
+```
+
+Happily, we can use the same functions we have learnt on this multi-layer raster. For example, we can convert all the rasters to Fahrenheit:
+
+```{r}
+sst_monthly_fahrenheit <- (sst_monthly * 1.8) + 32
+
+plot(sst_monthly_fahrenheit)
+```
+
+We can also crop and mask our data:
+
+```{r}
+sst_monthly_cropped_masked <- crop(sst_monthly, gbr_boundary, mask = TRUE)
+
+plot(sst_monthly_cropped_masked)
+```
+
+
+## Extracting data
+
+We have been looking at data within the Great Barrier Reef Marine Park boundary. What if we want to extract data for some areas within that area? For example we might want to know the temperature within some of the zones within the marine park. We could crop and mask our data for each of our zones, but this could get messy if we have a lot of zones. Happily there is an easier way.
+
+First lets load the geospatial data for two habitat protection zones in the Great Barrier Reef. This is just a small part of the [Great Barrier Reef Marine Park zoning map](https://geohub-gbrmpa.hub.arcgis.com/datasets/GBRMPA::great-barrier-reef-marine-park-zoning-/explore). Surprisingly, habitat protection zones allow all types of fishing except trawling. You can view more details about the zones and the activities that are allowed [here](https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones).
+
+```{r}
+#load the zones data
+zones <- vect("../data/gbr_habitat_protection_zones.gpkg")
+
+#take a look
+zones
+```
+
+There are lots of columns, but lets use the "PERMIT_DESC" column, which is actually the zone location, to map them since it has distinct and interesting descriptions for them.
+```{r}
+#plot the zones with our temperature data
+plot(zones, "PERMIT_DESC")
+```
+
+Lets plot them over our temperature data for context.
+
+```{r}
+plot(sst_cropped_masked)
+lines(zones)
+```
+
+Although we have been able to plot the zones and the temperature raster together, they are actually in different coordinate reference systems.
+
+```{r}
+crs(sst_cropped_masked)
+```
+
+Well, that's a lot of information. This is the "well-known text" version of the coordinate reference system. To get just some basic information that most of the time is all we need, we can do:
+
+```{r}
+crs(sst_cropped_masked, describe = TRUE)
+```
+
+```{r}
+crs(zones, describe = TRUE)
+```
+
+
+
+```{r}
+zonal(sst_cropped_masked, zones, fun = "mean")
+```
+
+
+```{r}
+zonal(sst_cropped_masked, zones, fun = "max")
+```
+
+
+```{r}
+zones_data_df <- extract(sst_cropped_masked, zones)
+
+zones_data_df
+```
+
+```{r}
+boxplot(CRW_SST_2 ~ ID, zones_data_df)
 ```
 
