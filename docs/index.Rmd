@@ -22,17 +22,22 @@ This workshop will provide you with an introduction to manipulating raster spati
 
 `terra`'s predecessor `raster` had many of the same functions as `terra`, and I will mention how functions have changed or been renamed which might be helpful for people migrating from using `raster`. In the words of the creator of both packages: `terra` is simpler, faster and can do more, so definitely switch to `terra` if you are still using `raster`!
 
+::: {.rasterbox}
+`raster` users note: Boxes like this will highlight differences between the `raster` package and `terra`.
+:::
+
 *Resources*:
 
 - The official `terra` tutorial page is https://rspatial.org/spatial/index.html  
-- An excellent reference to all the functions in `terra` is https://rspatial.github.io/terra/reference/terra-package.html 
+- An excellent reference to all the functions in `terra` is https://rspatial.github.io/terra/reference/terra-package.html
+- This website is an good guide to doing GIS work in R using both `terra` and `sf` packages: https://mgimond.github.io/Spatial/index.html 
 
 <!-- badges: start -->
 <!-- badges: end -->
 
 ## Prerequisites 
 
-You will need the `terra` package installed, which can be done by running `install.packages("terra")`. If you have problems, there are more details about installing [here](https://rspatial.github.io/terra/index.html). We can then load it
+You will need the `terra` package installed, which can be done by running `install.packages("terra")`. If you have problems, there are more details about installing it [here](https://rspatial.github.io/terra/index.html). We can then load it
 
 ```{r}
 library(terra)
@@ -43,7 +48,7 @@ library(terra)
 There are basically two types of spatial data: vector and raster
 
 ## Vector data 
-Can be points, lines or polygons. Useful for representing things like survey locations, rivers, and boundaries.
+Can be points, lines or polygons. Useful for representing things like survey locations, rivers, and boundaries. 
 
 ```{r class.source='fold-hide'}
 pts <- rbind(c(3.2,4), c(3,4.6), c(3.8,4.4), c(3.5,3.8), c(3.4,3.6), c(3.9,4.5)) |>
@@ -64,7 +69,9 @@ par(mfrow = c(1,3))
 ```
 
 ## Raster data 
-Raster data is a grid of rectangles, normally called cells. Each cell can have a value. Rasters are often used to store elevation, temperature, and habitat data, to name just a few examples. 
+Raster data is a grid of rectangles, normally called cells. Each cell has a value, making rasters useful for storing continuous data, such as temperature and elevation.
+
+Here is an example of raster data, where each cell in the raster represents elevation.
 
 ```{r class.source='fold-hide'}
 elev <- system.file("ex/elev.tif", package = "terra") |>
@@ -81,7 +88,7 @@ elev |>
 
 # Getting started
 
-Lets start by creating our own raster. We can create rasters from scratch and load them from a file using the function `rast()`. We can create a simple raster by specifying the x and y limits for the raster and the resolution (how big each rectangle is).
+Lets start by creating our own raster. We can create rasters from scratch and load them from a file using the function `rast()`. We can create a simple raster by specifying the x and y limits for the raster and the resolution (how big each cell is).
 
 ::: {.rasterbox}
 `raster` users note: `rast()` replaces `raster()`
@@ -98,7 +105,7 @@ ras
 
 The figure below shows what most of the terms above refer to. As you can see, you don't need to use all the terms to define a raster. Couple of other points:
 
-- Every object in R has a class, and as you can see, rasters in terra are of class `SpatRaster`. 
+- Every object in R has a class, such as `data.frame` and as you can see, rasters in terra are of class `SpatRaster`. 
 - We did not tell `rast()` which coordinate reference system to use, so it defaults to using longitude latitude coordinates, also known as EPSG 4326.
 
 ::: {.rasterbox}
@@ -121,7 +128,7 @@ Why is there no plot? Because the raster we created is empty; there are no value
 ncell(ras)
 ```
 
-Ok, now we know this lets give our raster cells values from 1 to 25:
+Ok, now we know this lets give our raster cells values from 1 to `r ncell(ras)`:
 
 ```{r}
 values(ras) <- 1:25
@@ -129,7 +136,7 @@ values(ras) <- 1:25
 plot(ras)
 ```
 
-Now our raster has values, we get a plot! Each cell has an integer value between 1 and 25, with cell values increasing from left to right and top to bottom. So the values started being "filled up" in the top left, and finished in the bottom right.
+Now our raster has values, we get a plot! Each cell has an integer value between 1 and 25, with cell values increasing from left to right and top to bottom. So the values start being "filled up" in the top left, and finish in the bottom right.
 
 Lets have another look at our raster properties
 
@@ -139,47 +146,50 @@ ras
 
 We can now see a few extra pieces of information compared to last time:
 
-- `sources(s)`: where is the data held on your computer? It says `memory` for this raster, indicating that the raster is in the computer memory. Rasters can also be held on your hard disk, in which case this will be the file name of the raster. We won't go into details here, but `terra` is smart about loading data into memory; only doing so if it thinks it will have enough space, since most computers have much less memory than hard disk space.
+- `sources(s)`: where is the data held on your computer? It says `memory` for this raster, indicating that the raster is in the computer memory. Rasters can also be held on your hard disk, in which case this will be the file name of the raster. We won't go into details here, but `terra` is smart about loading data into memory, only doing so when it needs to and it thinks it will have enough space.
 - `name`: what is the raster called?
 - `min value` & `max value`: the minimum and maximum values in the raster
 
 Ok, now we understand the basic structure of a raster, lets load some data.
 
 # Exploring some real world data
+
 Sea surface temperature can be measured by satellites, and the National Oceanic and Atmospheric Administration (NOAA) in the U.S. has been doing so since 1972! Daily sea surface temperature for the world from 1985 to the present is available via the [NOAA Coral Reef Watch website](https://coralreefwatch.noaa.gov/product/5km/index_5km_sst.php). 
 
-We are going to explore sea surface temperature (SST) data for the Great Barrier Reef in Australia. All the data is in the `data` folder, and full details on how I got the data are in the `data_prep.R` script in that folder.
+We are going to explore sea surface temperature (SST) data for the Great Barrier Reef in Australia. All the data is in the `data` folder in the Github repository, and full details on how I got the data are in the `data_prep.R` script in that folder.
 
 ## Load the data
 
-We can use the same `rast()` command that we used to make our own raster before. The data is stored in GeoTiff (.tif) format, which is widely used for raster data. You can get a full list of data formats that `terra` can read and write by running `gdal(drivers = TRUE)`.
+We can use the same `rast()` command that we used to make our own raster to load data The data is stored in GeoTiff (.tif) format, which is widely used for raster data. You can get a full list of data formats that `terra` can read and write by running `gdal(drivers = TRUE)`.
 
 ```{r}
-sst <- rast("../data/gbr_temp_2023_05_31.tif")
-sst
+sst <- rast("../data/gbr_temp_2023_05_31.tif") #load the data
+
+sst #view the properties
 ```
 
 If the data loaded correctly, you should see the properties as shown above. We have all the properties I described earlier, but there are a couple of things worth noting:
 
-- the coordinate reference system (crs) is in lon/ lat, which means the unit of measurement is degrees. So the extent coordinates are in degrees, i.e. xmin = `r sprintf("%1.0f", as.numeric(ext(sst)$xmin))`$^\circ$, xmax = `r sprintf("%0.2f", as.numeric(ext(sst)$xmax))`$^\circ$, ymin = `r sprintf("%0.2f", as.numeric(ext(sst)$ymin))`$^\circ$ and ymax =  `r sprintf("%0.2f", as.numeric(ext(sst)$xmax))`$^\circ$, and resolution is also in degree, i.e `r sprintf("%0.2f", res(sst)[1])`$^\circ$.
+- the coordinate reference system (crs) is in lon/ lat, which means the unit of measurement is degrees. So the extent coordinates are in degrees, i.e. xmin = `r sprintf("%1.0f", as.numeric(ext(sst)$xmin))`$^\circ$, xmax = `r sprintf("%0.2f", as.numeric(ext(sst)$xmax))`$^\circ$, ymin = `r sprintf("%0.2f", as.numeric(ext(sst)$ymin))`$^\circ$ and ymax =  `r sprintf("%0.2f", as.numeric(ext(sst)$xmax))`$^\circ$, and resolution is also in degrees, i.e `r sprintf("%0.2f", res(sst)[1])`$^\circ$.
 - the `source` is the filename of the data we loaded. This means it is on disk, not in memory. We can double check by running `inMemory(sst)` which should return `r inMemory(sst)`.
+- `unit` is Celsius. Most rasters don't come with the units, so you will normally need to look at metadata to find this information.
 
 ## Plot the data
 
-We want to plot our data to see what it looks like. This is the first thing you should do with almost any data to do a quick check that it looks right
+We want to plot our data to see what it looks like. This is the first thing you should do with almost any spatial data to do a quick check that it looks right
 
 ```{r}
 plot(sst)
 ```
 
-The values in the legend seem about what we would expect in tropical water, temperatures ranging from ~18 - 28$^\circ$ Celsius.
+The values in the legend seem about what we would expect for water temperatures, ranging from ~10 - 30$^\circ$ Celsius.
 
-The white areas of the plot are cells with NA values, which in this case are land; there are no sea surface temperature data for the land! We can see Australia taking up much of the plot and Papua New Guinea to the north.
+The white areas of the plot are cells with `NA` values, which in this case are land; there are no sea surface temperature data for the land! We can see the land mass of Australia taking up much of the map and Papua New Guinea to the north.
 
 We can set the NA values to a different colour if we want, which can be helpful if you want to see some NA cells that are getting lost against the other colours.
 
 ```{r}
-plot(sst, colNA = "blue")
+plot(sst, colNA = "black")
 ```
 
 Note that every cell within our raster has to have a value. 
@@ -194,20 +204,25 @@ To put our raster data in context, lets plot the Great Barrier Reef Marine Park 
 ```{r}
 #load the park boundary
 gbr_boundary <- vect("../data/gbr_MPA_boundary.gpkg")
+```
 
+We can plot vector boundaries on top of raster data using `lines()`:
+
+```{r}
 #plot the SST data and the boundary on top
 plot(sst)
 lines(gbr_boundary) #this plots the vector lines over the raster data
 ```
 
+We now see the outline of the Great Barrier Reef marine park on top of the sea surface temperature data we plotted before.
 
 ## Crop and mask data
 
 The data we have at the moment is for a much larger area than just the Great Barrier Reef marine park. To get only that data we need to crop and mask the raster data using the marine park boundary.
 
-Cropping means that keep only the data inside the **extent** of the vector we are using. Mask means that all the data outside the vector is set to NA or some other value we specify. Lets have a look how this works.
+Cropping means that we keep only the data inside the **extent** of the vector we are using. Mask means that all the data outside the vector is set to NA or some other value we specify. Lets have a look how this works.
 
-First lets have a look at the extent of the marine park boundary. We can get the extent of an object using `ext()`. We need to convert this into a `SpatVector` object for plotting using `vect()`. We only need to do this for plotting; when we crop, we can just use marine park boundary vector.
+First lets have a look at the extent of the marine park boundary. We can get the extent of a raster or vector using `ext()`. We need to convert this into a `SpatVector` object for plotting using `vect()`. We only need to do this for plotting; when we crop, we can just use the marine park boundary as the input.
 
 ::: {.rasterbox}
 `raster` users note: `ext()` replaces `extent()`
@@ -235,7 +250,7 @@ plot(sst_cropped)
 lines(gbr_boundary)
 ```
 
-Now we cropped our raster, we can mask it so that we only have values for the area within the Great Barrier Reef marine park boundary. We do this using `mask`
+Now we have cropped our raster, we can mask it so that we only have values for the area within the marine park boundary. We do this using `mask`:
 
 ```{r}
 #mask
@@ -246,7 +261,7 @@ plot(sst_cropped_masked)
 lines(gbr_boundary)
 ```
 
-So now we only see raster values for cells that are within the Great Barrier Reef marine park boundary. But remember that the areas that are white, still have values in our raster, they are just `NA` values.
+Now we only see raster values for cells that are within the marine park boundary. But remember that the areas that are white, still have values, they are just `NA` values.
 
 Often we want to `crop` and `mask` one after the other, and you can do this in one command using `crop(sst, gbr_boundary, mask = TRUE)`. 
 
@@ -272,27 +287,30 @@ lines(gbr_boundary)
 par(mfrow = c(1,1))
 ```
 
+Why not just mask rather than crop and mask? As we see in the figure above, this would mean we have a lot of area we are not interested in and even though most of those cells would be `NA` they take up space in our raster, so it is not efficient.
+
 ## Raster values
 
 Now we have cropped and masked our original raster to get only data within the area we are interested in, we can start exploring the values. `terra` has several functions that can help us do this easily.
 
 ### Histogram
 
-We can get a histogram of the temperature values using the `hist()` function.
+We can get a histogram of all the values in our raster using the `hist()` function, which is equivalent to the base R function.
 
 ```{r}
 hist(sst_cropped_masked)
 ```
 
-The x-axis has is our raster values measurement; in our case temperature in degrees Celsius. The y-axis is frequency; how many cells in our raster have those values.
+The x-axis is in the units of our raster values; temperature in degrees Celsius in our case. The y-axis is frequency; how many cells in our raster have those values.
 
-You can change modify the histogram using the same arguments you use with `hist()` in base R, for example lets increase the number of bars we have:
+You can change the histogram using the same arguments you use with `hist()` in base R. For example, lets increase the number of bars we have:
 
 ```{r}
 hist(sst_cropped_masked, breaks = 100)
 ```
 
 ### Frequency table 
+
 We can get a frequency table of values in our raster using `freq()`. This is essentially the same information that is shown in the histogram in graphical format.
 
 ```{r}
@@ -314,21 +332,27 @@ freq(sst_cropped_masked, value = NA)
 
 ### Statistics
 
-We can use the same `summary()` command that is used in base R, to get a summary of the statistical information for an entire raster.
+We can use the same `summary()` command that is used in base R to get a summary of the statistical information for an entire raster.
 
 ```{r}
 summary(sst_cropped_masked)
 ```
 
-These values are, for example, the mean value of all raster values, with NA values excluded.
+These values are, for example, the mean value of all raster values excluding `NA`s.
 
-To get individual statistical values, we need the function `global()`. For example to get the mean value of a raster:
+To get individual statistical values, we need to use `global()`. For example to get the mean value of a raster:
+
+```{r}
+global(sst_cropped_masked, "mean")
+```
+
+Hmmm, what went wrong? The default is for `global()` to include all values in the raster, and since we have lots of `NA`s, the result is `NaN`. We need to set `na.rm = TRUE` to exclude the `NA` values.
 
 ```{r}
 global(sst_cropped_masked, "mean", na.rm = TRUE)
 ```
 
-We need to use `na.rm = TRUE` otherwise `NA` values are included and the mean is `NaN`. The object returned by `global` is a data frame, so if you want just the value, you need to do:
+The object returned by `global()` is a data frame, so if you want just the value, you need to do:
 
 ```{r}
 sst_mean <- as.numeric(global(sst_cropped_masked, "mean", na.rm = TRUE))
@@ -388,18 +412,18 @@ plot(sst_fahrenheit)
 
 ## Nice maps
 
-Lets also make the map a bit prettier, choosing more appropriate colours and adding a scale bar
+Lets also make the map a bit prettier, choosing more appropriate colours and adding a scale bar. There are huge number of options for plotting, see the help file `?help` for details. There are many great plotting packages such as `tmap` and `ggplot` that can be used to make maps, but I will not cover those here. The [Geocomputation with R](https://r.geocompx.org/adv-map) website is an excellent resource on map making and geospatial data in R in general. 
 
 ```{r}
 plot(sst_fahrenheit, col = hcl.colors(50, palette = "RdYlBu", rev = TRUE), las = 1) #see ?hcl.colors for more info on colour palettes. rev= TRUE because we want to reverse the palette: red colours are the highest values and blue the lowest
 lines(gbr_boundary)
-sbar(d = 400, type = "bar", divs = 2, below = "km") #400km bar with 2 divisions and "km" written below
+sbar(d = 400, type = "bar", divs = 2, below = "km") #400km scale bar with 2 divisions and "km" written below
 ```
 
 <details>
-<summary>More info on colour palettes</summary>
+<summary>Click to see a range of colour palettes</summary>
 
-Code is directly from the `?hcl.colors()` Examples. This 
+The swatches below show all the colour scales available via `hcl.colors()`. The code is directly from `?hcl.colors()`. 
 ```{r class.source='fold-hide'}
 ## color swatches for HCL palettes
 hcl.swatch <- function(type = NULL, n = 5, nrow = 11,
@@ -439,6 +463,91 @@ hcl.swatch("divergingx")
 
 </details>
 
+## Extracting data
+
+We have been looking at data within the Great Barrier Reef Marine Park boundary. What if we want to extract data for some areas within that area? For example we might want to know the temperature within some of the zones within the marine park. We could crop and mask our data for each of our zones, but this could get messy if we have a lot of zones. Happily there is an easier way.
+
+First lets load the geospatial data for two habitat protection zones in the Great Barrier Reef. This is just a small part of the [Great Barrier Reef Marine Park zoning map](https://geohub-gbrmpa.hub.arcgis.com/datasets/GBRMPA::great-barrier-reef-marine-park-zoning-/explore). Surprisingly, habitat protection zones allow all types of fishing except trawling. You can view more details about the zones and the activities that are allowed [here](https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones).
+
+```{r}
+#load the zones data
+zones <- vect("../data/gbr_habitat_protection_zones.gpkg")
+
+#take a look
+zones
+```
+
+There are lots of columns, but lets use the "PERMIT_DESC" column, which is the zone location, to map them since it has distinct and interesting descriptions for them.
+
+```{r}
+#plot the zones with our temperature data
+plot(zones, "PERMIT_DESC")
+```
+
+Lets plot these zones over our temperature data for context.
+
+```{r}
+plot(sst_cropped_masked)
+lines(zones)
+```
+
+## Coordinate reference systems
+
+<details>
+<summary>Let's pause here for a very brief overview of coordinate reference systems!</summary>
+
+Geographic coordinate systems: uses a 3-D surface to define locations on the Earth using longitude and latitude
+
+Projected coordinate reference system: translates a GCS into 2-D so we can measure distances, areas, etc. in more useful units such as meters or, dare I say, feet.
+
+https://gis.stackexchange.com/questions/149749/is-wgs84-a-coordinate-system-or-projection-system
+
+https://r.geocompx.org/spatial-class#crs-intro
+
+https://docs.qgis.org/3.34/en/docs/gentle_gis_introduction/coordinate_reference_systems.html
+
+</details>
+
+Although we have been able to plot the zones and the temperature raster together, they are actually in different coordinate reference systems (crs's). To see what the crs of a raster or vector is we use `crs()`.
+
+```{r}
+crs(sst_cropped_masked)
+```
+
+Well, that's a lot of information. This is the "well-known text" version of the coordinate reference system. To get just some basic information that most of the time is all we need, we can do:
+
+```{r}
+crs(sst_cropped_masked, describe = TRUE)
+```
+
+```{r}
+crs(zones, describe = TRUE)
+```
+
+
+
+```{r}
+zonal(sst_cropped_masked, zones, fun = "mean")
+```
+
+
+```{r}
+zonal(sst_cropped_masked, zones, fun = "max")
+```
+
+
+```{r}
+zones_data_df <- extract(sst_cropped_masked, zones)
+
+zones_data_df
+```
+
+```{r}
+boxplot(CRW_SST_2 ~ ID, zones_data_df)
+```
+
+
+
 ## Rasterlayers
 
 A very useful feature of rasters is that they can have many layers. These layers often represent different time periods, such as days or months. Lets look at a multi-layer raster which has the same temperature data that we have been looking at, but each layer represents the mean temperature in a month. We load the multi-layer raster in the same way as any other raster, using `rast()`:
@@ -477,69 +586,4 @@ sst_monthly_cropped_masked <- crop(sst_monthly, gbr_boundary, mask = TRUE)
 plot(sst_monthly_cropped_masked)
 ```
 
-
-## Extracting data
-
-We have been looking at data within the Great Barrier Reef Marine Park boundary. What if we want to extract data for some areas within that area? For example we might want to know the temperature within some of the zones within the marine park. We could crop and mask our data for each of our zones, but this could get messy if we have a lot of zones. Happily there is an easier way.
-
-First lets load the geospatial data for two habitat protection zones in the Great Barrier Reef. This is just a small part of the [Great Barrier Reef Marine Park zoning map](https://geohub-gbrmpa.hub.arcgis.com/datasets/GBRMPA::great-barrier-reef-marine-park-zoning-/explore). Surprisingly, habitat protection zones allow all types of fishing except trawling. You can view more details about the zones and the activities that are allowed [here](https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones).
-
-```{r}
-#load the zones data
-zones <- vect("../data/gbr_habitat_protection_zones.gpkg")
-
-#take a look
-zones
-```
-
-There are lots of columns, but lets use the "PERMIT_DESC" column, which is actually the zone location, to map them since it has distinct and interesting descriptions for them.
-```{r}
-#plot the zones with our temperature data
-plot(zones, "PERMIT_DESC")
-```
-
-Lets plot them over our temperature data for context.
-
-```{r}
-plot(sst_cropped_masked)
-lines(zones)
-```
-
-Although we have been able to plot the zones and the temperature raster together, they are actually in different coordinate reference systems.
-
-```{r}
-crs(sst_cropped_masked)
-```
-
-Well, that's a lot of information. This is the "well-known text" version of the coordinate reference system. To get just some basic information that most of the time is all we need, we can do:
-
-```{r}
-crs(sst_cropped_masked, describe = TRUE)
-```
-
-```{r}
-crs(zones, describe = TRUE)
-```
-
-
-
-```{r}
-zonal(sst_cropped_masked, zones, fun = "mean")
-```
-
-
-```{r}
-zonal(sst_cropped_masked, zones, fun = "max")
-```
-
-
-```{r}
-zones_data_df <- extract(sst_cropped_masked, zones)
-
-zones_data_df
-```
-
-```{r}
-boxplot(CRW_SST_2 ~ ID, zones_data_df)
-```
 
