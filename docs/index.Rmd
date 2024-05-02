@@ -10,14 +10,6 @@ output:
     code_folding: show
 ---
 
-
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
-)
-```
-
 This workshop will provide you with an introduction to manipulating raster spatial data using the R package `terra`. `terra` and its predecessor, `raster` are widely used for spatial data manipulation in R. No prior experience of spatial data is assumed, but this short workshop will not have time to delve into some important aspects of spatial data such as projections. 
 
 `terra`'s predecessor `raster` had many of the same functions as `terra`, and I will mention how functions have changed or been renamed which might be helpful for people migrating from using `raster`. In the words of the creator of both packages: `terra` is simpler, faster and can do more, so definitely switch to `terra` if you are still using `raster`!
@@ -32,12 +24,18 @@ This workshop will provide you with an introduction to manipulating raster spati
 - An excellent reference to all the functions in `terra` is https://rspatial.github.io/terra/reference/terra-package.html
 - This website is an good guide to doing GIS work in R using both `terra` and `sf` packages: https://mgimond.github.io/Spatial/index.html 
 
-<!-- badges: start -->
-<!-- badges: end -->
+```{r include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
 
 ## Prerequisites 
 
-You will need the `terra` package installed, which can be done by running `install.packages("terra")`. If you have problems, there are more details about installing it [here](https://rspatial.github.io/terra/index.html). We can then load it
+You will need the `terra` package installed, which can be done by running `install.packages("terra")`. If you have problems, there are more details about installing it [here](https://rspatial.github.io/terra/index.html). I will also show how to make an interactive map with `terra`, which requires the `leaflet` package to be installed; `install.packages("leaflet")`. 
+
+We can now load the `terra` package:
 
 ```{r}
 library(terra)
@@ -465,7 +463,7 @@ hcl.swatch("divergingx")
 
 ## Extracting data
 
-We have been looking at data within the Great Barrier Reef Marine Park boundary. What if we want to extract data for some areas within that area? For example we might want to know the temperature within some of the zones within the marine park. We could crop and mask our data for each of our zones, but this could get messy if we have a lot of zones. Happily there is an easier way.
+We have been looking at data within the Great Barrier Reef Marine Park boundary. What if we want to extract data for several smaller areas within that area? For example we might want to know the temperature within some of the zones within the marine park. We could crop and mask our data for each of our zones, but this could get messy if we have a lot of zones. Happily there is an easier way.
 
 First lets load the geospatial data for two habitat protection zones in the Great Barrier Reef. This is just a small part of the [Great Barrier Reef Marine Park zoning map](https://geohub-gbrmpa.hub.arcgis.com/datasets/GBRMPA::great-barrier-reef-marine-park-zoning-/explore). Surprisingly, habitat protection zones allow all types of fishing except trawling. You can view more details about the zones and the activities that are allowed [here](https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones).
 
@@ -491,23 +489,6 @@ plot(sst_cropped_masked)
 lines(zones)
 ```
 
-## Coordinate reference systems
-
-<details>
-<summary>Let's pause here for a very brief overview of coordinate reference systems!</summary>
-
-Geographic coordinate systems: uses a 3-D surface to define locations on the Earth using longitude and latitude
-
-Projected coordinate reference system: translates a GCS into 2-D so we can measure distances, areas, etc. in more useful units such as meters or, dare I say, feet.
-
-https://gis.stackexchange.com/questions/149749/is-wgs84-a-coordinate-system-or-projection-system
-
-https://r.geocompx.org/spatial-class#crs-intro
-
-https://docs.qgis.org/3.34/en/docs/gentle_gis_introduction/coordinate_reference_systems.html
-
-</details>
-
 Although we have been able to plot the zones and the temperature raster together, they are actually in different coordinate reference systems (crs's). To see what the crs of a raster or vector is we use `crs()`.
 
 ```{r}
@@ -524,6 +505,49 @@ crs(sst_cropped_masked, describe = TRUE)
 crs(zones, describe = TRUE)
 ```
 
+Let's pause our raster work for a brief dive into coordinate reference systems.
+
+## Coordinate reference systems
+
+<details>
+<summary>Click here to expand this section</summary>
+
+If we want to know where things are in space, we need to use some kind of spatial reference. We can use our own arbitrary system, e.g. a sampling grid like the one shown in the photo below where we could define the location of each square relative to one of the corners. But normally we want to know where something is on Earth.
+
+```{r fig.width=6, echo=FALSE}
+knitr::include_graphics("../figs/quadrat.jpg")
+```
+
+There are two types of coordinate systems we can use to represent locations on Earth:
+
+- Geographic coordinate systems (GCS): uses a 3-D surface (e.g. globe) to define locations on the Earth using longitude and latitude. The 3-D surface is normally an ellipsoid which approximates the Earth but cannot be exact since the Earth is not a smooth surface. This approximation of the Earth is called an datum and can be aligned with the true Earth (the geoid) in different ways depending on whether we are trying to get a good approximation at some particular location (local datum), e.g. California, or best approximation across the whole Earth (geocentric datum). The figure below (sourced from [here](https://mgimond.github.io/Spatial/chp09_0.html)) shows examples of these datums.
+
+```{r fig.width=8, echo=FALSE}
+knitr::include_graphics("../figs/datums.png")
+
+```
+
+A commonly used geocentric datum is World Geodetic Survey for 1984 (WGS84). This is almost synonymous with the commonly used coordinate reference system EPSG 4326, but EPSG 4326 defines the latitude and longitude coordinates used on the WGS84 ellipsoid ([Ref](https://gis.stackexchange.com/questions/3334/difference-between-wgs84-and-epsg4326))
+
+- Projected coordinate system (projection): Unfortunately, we can't carry around globes all the time when we want to look at a map, and doing calculations, such as distance and area, in 3-D is much more difficult than 2-D. So we need a way of representing of getting from our 3-D globe to a piece of paper (or for younger people, a screen). To do this we need to 'project' from a GCS to a projected coordinate system, which is called projection because we can think of this as putting a light in the center of a globe and the light shines through the globe projecting features onto a flat piece of paper. The figure below (from [QGIS docs](https://docs.qgis.org/3.34/en/docs/gentle_gis_introduction/coordinate_reference_systems.html)) illustrates this, showing the 3 projection families:
+
+```{r fig.width=8, echo=FALSE, fig.cap="a) Cylindrical; b) conical, and; c) planar projecions"}
+knitr::include_graphics("../figs/projections_qgis_docs.png")
+
+```
+
+All projections are a compromise because they will always distort the shape, area, distances, and directions of the original GCS. A map that preserves shape is called conformal; one that preserves area is called equal-area; one that preserves distance is called equidistant; and one that preserves direction is called azimuthal. There are a huge number of projections available and choosing the correct one can be challenging. Often your choice will be to use the a local projection that is used by goverment or other authorities in the location you are working, e.g. for my work in Bermuda, much of the data was in the Bermuda 2000 National Grid projection (EPSG:3770). For global work where equal area is important, the Molleweide projection is commonly used.
+
+
+
+Coordinate reference systems are a huge topic to cover, so I have only covered some key ideas. The following resources are useful for understanding in more depth:
+
+- The QGIS software [documentation](https://docs.qgis.org/3.34/en/docs/gentle_gis_introduction/coordinate_reference_systems.html)
+- The Geocomputation with R [book section](https://r.geocompx.org/spatial-class#crs-intro)
+- R for Spatial Data Science book [section](https://r-spatial.org/book/08-Plotting.html)
+- Stackexchange [question](https://gis.stackexchange.com/questions/149749/is-wgs84-a-coordinate-system-or-projection-system) about WGS84
+
+</details>
 
 
 ```{r}
