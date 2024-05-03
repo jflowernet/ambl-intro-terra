@@ -461,51 +461,9 @@ hcl.swatch("divergingx")
 
 </details>
 
-## Extracting data
+## Projecting rasters
 
-We have been looking at data within the Great Barrier Reef Marine Park boundary. What if we want to extract data for several smaller areas within that area? For example we might want to know the temperature within some of the zones within the marine park. We could crop and mask our data for each of our zones, but this could get messy if we have a lot of zones. Happily there is an easier way.
-
-First lets load the geospatial data for two habitat protection zones in the Great Barrier Reef. This is just a small part of the [Great Barrier Reef Marine Park zoning map](https://geohub-gbrmpa.hub.arcgis.com/datasets/GBRMPA::great-barrier-reef-marine-park-zoning-/explore). Surprisingly, habitat protection zones allow all types of fishing except trawling. You can view more details about the zones and the activities that are allowed [here](https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones).
-
-```{r}
-#load the zones data
-zones <- vect("../data/gbr_habitat_protection_zones.gpkg")
-
-#take a look
-zones
-```
-
-There are lots of columns, but lets use the "PERMIT_DESC" column, which is the zone location, to map them since it has distinct and interesting descriptions for them.
-
-```{r}
-#plot the zones with our temperature data
-plot(zones, "PERMIT_DESC")
-```
-
-Lets plot these zones over our temperature data for context.
-
-```{r}
-plot(sst_cropped_masked)
-lines(zones)
-```
-
-Although we have been able to plot the zones and the temperature raster together, they are actually in different coordinate reference systems (crs's). To see what the crs of a raster or vector is we use `crs()`.
-
-```{r}
-crs(sst_cropped_masked)
-```
-
-Well, that's a lot of information. This is the "well-known text" version of the coordinate reference system. To get just some basic information that most of the time is all we need, we can do:
-
-```{r}
-crs(sst_cropped_masked, describe = TRUE)
-```
-
-```{r}
-crs(zones, describe = TRUE)
-```
-
-Let's pause our raster work for a brief dive into coordinate reference systems.
+So far, our data have been in the same coordinate reference system (crs), but we often have to deal with spatial data that have different crs's. But first, what is a crs? The following section provides a brief summary with links to further reading.
 
 ## Coordinate reference systems
 
@@ -522,7 +480,7 @@ There are two types of coordinate systems we can use to represent locations on E
 
 - Geographic coordinate systems (GCS): uses a 3-D surface (e.g. globe) to define locations on the Earth using longitude and latitude. The 3-D surface is normally an ellipsoid which approximates the Earth but cannot be exact since the Earth is not a smooth surface. This approximation of the Earth is called an datum and can be aligned with the true Earth (the geoid) in different ways depending on whether we are trying to get a good approximation at some particular location (local datum), e.g. California, or best approximation across the whole Earth (geocentric datum). The figure below (sourced from [here](https://mgimond.github.io/Spatial/chp09_0.html)) shows examples of these datums.
 
-```{r fig.width=8, echo=FALSE}
+```{r echo=FALSE}
 knitr::include_graphics("../figs/datums.png")
 
 ```
@@ -531,16 +489,14 @@ A commonly used geocentric datum is World Geodetic Survey for 1984 (WGS84). This
 
 - Projected coordinate system (projection): Unfortunately, we can't carry around globes all the time when we want to look at a map, and doing calculations, such as distance and area, in 3-D is much more difficult than 2-D. So we need a way of representing of getting from our 3-D globe to a piece of paper (or for younger people, a screen). To do this we need to 'project' from a GCS to a projected coordinate system, which is called projection because we can think of this as putting a light in the center of a globe and the light shines through the globe projecting features onto a flat piece of paper. The figure below (from [QGIS docs](https://docs.qgis.org/3.34/en/docs/gentle_gis_introduction/coordinate_reference_systems.html)) illustrates this, showing the 3 projection families:
 
-```{r fig.width=8, echo=FALSE, fig.cap="a) Cylindrical; b) conical, and; c) planar projecions"}
+```{r echo=FALSE, fig.cap="a) Cylindrical; b) conical, and; c) planar projecions"}
 knitr::include_graphics("../figs/projections_qgis_docs.png")
 
 ```
 
 All projections are a compromise because they will always distort the shape, area, distances, and directions of the original GCS. A map that preserves shape is called conformal; one that preserves area is called equal-area; one that preserves distance is called equidistant; and one that preserves direction is called azimuthal. There are a huge number of projections available and choosing the correct one can be challenging. Often your choice will be to use the a local projection that is used by goverment or other authorities in the location you are working, e.g. for my work in Bermuda, much of the data was in the Bermuda 2000 National Grid projection (EPSG:3770). For global work where equal area is important, the Molleweide projection is commonly used.
 
-
-
-Coordinate reference systems are a huge topic to cover, so I have only covered some key ideas. The following resources are useful for understanding in more depth:
+We have only covered the basics of coordinate reference systems because it is a big topic to cover. The following resources are useful for understanding in more depth:
 
 - The QGIS software [documentation](https://docs.qgis.org/3.34/en/docs/gentle_gis_introduction/coordinate_reference_systems.html)
 - The Geocomputation with R [book section](https://r.geocompx.org/spatial-class#crs-intro)
@@ -549,28 +505,135 @@ Coordinate reference systems are a huge topic to cover, so I have only covered s
 
 </details>
 
+## Projecting rasters (continued)
+
+First lets load some geospatial data that is in a different projection from the data we have been using so far. This is vector data for two marine protected areas (habitat protection zones) in the Great Barrief Reef marine park. This is just a small part of the [Great Barrier Reef Marine Park zoning map](https://geohub-gbrmpa.hub.arcgis.com/datasets/GBRMPA::great-barrier-reef-marine-park-zoning-/explore). Surprisingly, habitat protection zones allow all types of fishing except trawling. You can view more details about the zones and the activities that are allowed [here](https://www2.gbrmpa.gov.au/access/zoning/interpreting-zones).
 
 ```{r}
-zonal(sst_cropped_masked, zones, fun = "mean")
+#load the zones data
+zones <- vect("../data/gbr_habitat_protection_zones.gpkg")
+
+#take a look
+zones
 ```
 
+We can see the crs (coord. ref.) is GDA94 / Australian Albers (EPSG:3577). Lets get some more detail using the `crs()` function which queries the crs:
+
+```{r}
+crs(zones)
+```
+
+That's a lot of info, and not very easy to read. This is the well-known text (wkt) representation of the crs. We can see that GDA94 stands for Geocentric Datum of Australia 1994, but we can get a more basic version of the crs using:
+
+```{r}
+crs(zones, describe = TRUE)
+```
+
+This gives just key information we often need to make sense of a crs. We can see that this crs is intended for use for Australia, including all states. We also get the EPSG code: `r crs(zones, describe = TRUE)$code`. EPSG stands for European Petroleum Survey Group who developed a database of 'official' crs's, but now people use EPSG to refer to the database itself (see [here](https://epsg.org/history.html) for more on the history of EPSG).
+
+Let's check the crs of the data we have been using
+
+```{r}
+crs(sst_cropped_masked, describe = TRUE)
+```
+
+The raster is in a crs with EPSG code 4326. This is widely used for global data, and is 'unprojected' data, measured in degrees longitude and latitude. 
+
+We want to get our rasters into the same crs. In this case we will project the raster into the local crs. Projecting can be done using `project()` and providing the data we want to project and a crs. In this case we can use the crs of the zones object, which we get using `crs(zones)`, but we could also just provide the EPSG code like this `project(sst_cropped_masked, "epsg:3577")`
+
+```{r}
+sst_cropped_masked_projected <- project(sst_cropped_masked, crs(zones))
+```
+
+It is really important to understand that when we project a raster, we are changing the raster, because we have to create a new raster in the new crs. 
+
+Lets compare our original raster and the projected version:
+
+```{r}
+sst_cropped_masked
+```
+
+```{r}
+sst_cropped_masked_projected
+```
+
+We can see that the projected raster is in the Australian Albers crs, and the extent, resolution, and dimensions have all changed. This crs has units of meters, which means the size of each raser cells is `r res(sst_cropped_masked_projected)[1]`m x `r res(sst_cropped_masked_projected)[2]`m. 
+
+Lets compare how the two rasters now look.
+
+```{r}
+par(mfrow = c(1,2)) #so we get plots beside each other: 1 row, 2 columns
+plot(sst_cropped_masked)
+plot(sst_cropped_masked_projected)
+
+par(mfrow = c(1,1)) #revert back to one plot per row
+```
+
+The maps look very similar, but we can see that the shape is changed and the axes are now in different units, reflecting the projection.
+
+Lets have a look at a summary of the values for each raster.
+
+```{r}
+summary(sst_cropped_masked)
+```
+
+```{r}
+summary(sst_cropped_masked_projected)
+```
+
+The statistics are similar, but not exactly the same. There are also a lot more NA values in the projected raster, largely because there are more cells: `r format(ncell(sst_cropped_masked), scientific = F)` in the original and `r format(ncell(sst_cropped_masked_projected), scientific = F)` in the projected raster.
+
+These changes in the raster are really important to think about when making decisions about projecting rasters. 
+
+## Extracting data
+
+We have been looking at data within the Great Barrier Reef Marine Park boundary. What if we want to extract data for several smaller areas within that area? For example we might want to know the average temperature within habitat protection zones we loaded. We could crop and mask our data for each of our zones, but this could get messy if we have a lot of zones. Happily there is an easier way.
+
+First lets plot of zones data to see what it looks like. There are lots of columns in the data, but lets use the "PERMIT_DESC" column, which is the zone location, to map them since it has distinct and interesting descriptions for them.
+
+```{r}
+#plot the zones with our temperature data
+plot(zones, "PERMIT_DESC")
+```
+
+Lets plot these zones over our temperature data for context.
+
+```{r}
+plot(sst_cropped_masked_projected)
+lines(zones)
+```
+
+Now, lets find the average temperature of the raster cells within our zones. We can use a function called `zonal()` and just give it our raster, followed by our zones polygons, and tell it we want the mean value.
+
+```{r}
+zonal(sst_cropped_masked_projected, zones, fun = "mean")
+```
+
+Each row shows the mean temperature for a polygon, in the same order as our `zones` object. The northern zone has the highest temperature because it is nearer the equator.
+
+We can get other summary values, for example the maximum temperature in our zones:
 
 ```{r}
 zonal(sst_cropped_masked, zones, fun = "max")
 ```
 
+You can get use other functions, such as min", sum", "isNA", and "notNA", and you can also use your own function. See `?zonal` for more details.
+
+We might also want to get all the raster values in our zones. We can do this using the `extract` function:
 
 ```{r}
-zones_data_df <- extract(sst_cropped_masked, zones)
+zones_data_df <- extract(sst_cropped_masked, zones) #the raster we are extracting from first, the polygons we want data for is second
 
-zones_data_df
+head(zones_data_df)
 ```
+
+We get a data frame with where each row has the value of raser cell in our zones, and the column `ID` is used to identify each zone; 1 and 2 in our case.
+
+Now we have a data frame of values we can, for example, do a boxplot of temperatures in each zone. I use the base R function here, but you can of course use `ggplot` or any other package you like.
 
 ```{r}
-boxplot(CRW_SST_2 ~ ID, zones_data_df)
+boxplot(CRW_SST_2 ~ ID, zones_data_df) 
 ```
-
-
 
 ## Rasterlayers
 
@@ -610,4 +673,32 @@ sst_monthly_cropped_masked <- crop(sst_monthly, gbr_boundary, mask = TRUE)
 plot(sst_monthly_cropped_masked)
 ```
 
+We can get data for our zones like we did before, but first we need to project our data, since the raster layers are in a different projection to the zones. Lets project our zones into the same crs as our raster, this way we do not change our raster data.
+
+```{r}
+zones_projected <- project(zones, crs(sst_monthly))
+```
+
+Now get the mean temperature in our zones
+
+```{r}
+zones_mean_temp <- zonal(sst_monthly, zones_projected)
+
+zones_mean_temp
+```
+
+We've got a data frame with each column showing the mean temperature in each zone for one month. However, this format is not great for plotting. 
+
+```{r}
+zones_mean_temp_t <- t(zones_mean_temp)
+
+plot_data <- cbind(names = rownames(zones_mean_temp_t), zones_mean_temp_t)
+```
+
+
+We can now plot a time series of temperature in our zones:
+
+```{r}
+plot(plot_data$names, plot_data$V1)
+```
 

@@ -107,4 +107,7 @@ plet(hpzs, "NAME") #can click on zones to get the names: I'm going to filter for
 hpzs_subset <- subset(hpzs, NAME %in% c("HP-21-5296", "HP-16-5126" ), NSE = TRUE) |>
   rev() # reverse so that first row is the northernmost zone - make life easier for plotting
 
-writeVector(hpzs_subset, "data/gbr_habitat_protection_zones.gpkg", overwrite = TRUE)
+#project to Australian Albers projection - this is appropriate for mainland Australia and covers most of the GBR. There aren't any other EPSG code defined crs's suitable for the whole GBR that I could find. This is equal area
+hpzs_subset_projected <- project(hpzs_subset, "epsg:3577")
+
+writeVector(hpzs_subset_projected, "data/gbr_habitat_protection_zones.gpkg", overwrite = TRUE)
