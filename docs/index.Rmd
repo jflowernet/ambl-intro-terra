@@ -585,6 +585,27 @@ The statistics are similar, but not exactly the same. There are also a lot more 
 
 These changes in the raster are really important to think about when making decisions about projecting rasters. 
 
+<details>
+<summary>More details on projection</summary>
+
+
+```{r}
+polys <- ras |>
+  as.polygons(dissolve = F) |>
+  project("ESRI:54009")
+
+ras_near <- project(ras, "ESRI:54009", meth = "near")
+pal <- RColorBrewer::brewer.pal(ncell(ras_near), name = "BrBG")
+
+plot(ras_near, type = "classes", col = pal, ext = ext(polys))
+plot(polys, "lyr.1", type = "classes")
+
+tmap::tm_shape(ras, bbox = sf::st_bbox(polys)) + tmap::tm_raster(palette = "BrBG", style = "cat") + tmap::tm_shape(sf::st_as_sf(polys)) + tmap::tm_borders()
+```
+
+
+</details>
+
 ## Extracting data
 
 We have been looking at data within the Great Barrier Reef Marine Park boundary. What if we want to extract data for several smaller areas within that area? For example we might want to know the average temperature within habitat protection zones we loaded. We could crop and mask our data for each of our zones, but this could get messy if we have a lot of zones. Happily there is an easier way.
