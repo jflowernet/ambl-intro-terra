@@ -11,6 +11,6 @@ You will need the `terra` package installed, which can be done by running `insta
 You will also need to have the data within this repository. You can do one of the following depending on how comfortable you are with Github:
 
 - Fork this repository using the grey "Fork" button on this page. This will create your own copy of this repository which has all the data and code. More details on how to fork [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
-- Download the data to somewhere on your computer that you will be able to access during the workshop. The data are in zip file [here](https://github.com/emlab-ucsb/intro-terra/blob/main/data/data.zip) and there is a "Download raw file" icon in the top right of the page which has an arrow pointing down. Make sure you know the path to the data files, e.g. "Documents/workshop_data/", so you can load the data during the workshop.
+- Download the data to somewhere on your computer that you will be able to access during the workshop. The data are in a zip file [here](https://github.com/emlab-ucsb/intro-terra/blob/main/data/data.zip); use the "Download raw file" icon (arrow pointing down) in the top right of that page. Once you have downloaded the data, unzip it, and make sure you know the path to the folder with all the data, e.g. "Documents/workshop_data/", so you can load the data during the workshop.
 
 The workshop website is shown on the right hand side of this page
