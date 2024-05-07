@@ -541,6 +541,10 @@ The raster is in a crs with EPSG code 4326. This is widely used for global data,
 
 We want to get our rasters into the same crs. In this case we will project the raster into the local crs. Projecting can be done using `project()` and providing the data we want to project and a crs. In this case we can use the crs of the zones object, which we get using `crs(zones)`, but we could also just provide the EPSG code like this `project(sst_cropped_masked, "epsg:3577")`
 
+::: {.rasterbox}
+`raster` users note: `project()` replaces `projectRaster()`
+:::
+
 ```{r}
 sst_cropped_masked_projected <- project(sst_cropped_masked, crs(zones))
 ```
@@ -588,19 +592,34 @@ These changes in the raster are really important to think about when making deci
 <details>
 <summary>More details on projection</summary>
 
+Let's take a look at some different methods of projection and the impact it has on the raster values. The red lined grid is the original raster grid in vector format projected.
 
-```{r}
+```{r class.source='fold-hide'}
+proj_moll <- "ESRI:54009"
+
 polys <- ras |>
   as.polygons(dissolve = F) |>
-  project("ESRI:54009")
+  project(proj_moll)
 
-ras_near <- project(ras, "ESRI:54009", meth = "near")
-pal <- RColorBrewer::brewer.pal(ncell(ras_near), name = "BrBG")
+ras_near <- project(ras, proj_moll, meth = "near")
+ras_bilinear <- project(ras, proj_moll)
+ras_average <- project(ras, proj_moll, method = "average")
 
-plot(ras_near, type = "classes", col = pal, ext = ext(polys))
-plot(polys, "lyr.1", type = "classes")
+pal <- hcl.colors(n = ncell(ras_near), "RdYlGn")
 
-tmap::tm_shape(ras, bbox = sf::st_bbox(polys)) + tmap::tm_raster(palette = "BrBG", style = "cat") + tmap::tm_shape(sf::st_as_sf(polys)) + tmap::tm_borders()
+padding <- 0
+
+plot_func <- function(input_raster, input_polygon, title_string){
+plot(input_raster, type = "classes", col = pal, xlim = c(ext(input_polygon)$xmin-padding, ext(input_polygon)$xmax+padding), ylim = c(ext(input_polygon)$ymin-padding, ext(input_polygon)$ymax+padding), main = title_string, fun = function() lines(input_polygon, col = "red", lwd = 2))
+}
+
+par(mfrow = c(2,2))
+plot(ras, main = "Original raster", col = pal)
+plot_func(ras_near, polys, "Nearest neighbour")
+plot_func(ras_bilinear, polys, "Bilinear interpolation")
+plot_func(ras_average, polys, "Area weighted mean")
+
+par(mfrow = c(1,1))
 ```
 
 
@@ -635,7 +654,7 @@ Each row shows the mean temperature for a polygon, in the same order as our `zon
 We can get other summary values, for example the maximum temperature in our zones:
 
 ```{r}
-zonal(sst_cropped_masked, zones, fun = "max")
+zonal(sst_cropped_masked_projected, zones, fun = "max")
 ```
 
 You can get use other functions, such as min", sum", "isNA", and "notNA", and you can also use your own function. See `?zonal` for more details.
@@ -643,7 +662,7 @@ You can get use other functions, such as min", sum", "isNA", and "notNA", and yo
 We might also want to get all the raster values in our zones. We can do this using the `extract` function:
 
 ```{r}
-zones_data_df <- extract(sst_cropped_masked, zones) #the raster we are extracting from first, the polygons we want data for is second
+zones_data_df <- extract(sst_cropped_masked_projected, zones) #the raster we are extracting from first, the polygons we want data for is second
 
 head(zones_data_df)
 ```
@@ -700,7 +719,14 @@ We can get data for our zones like we did before, but first we need to project o
 zones_projected <- project(zones, crs(sst_monthly))
 ```
 
-Now get the mean temperature in our zones
+Let's plot the SST data with the zones. We will plot just the first 4 rasters so we can see the zones more clearly. To get the zones on each of the raster maps, we have to add the `lines()` function that we have used before as an argument to the `plot()` function:
+
+```{r}
+plot(sst_monthly_cropped_masked[[1:4]], fun = function()lines(zones_projected))
+```
+
+
+Now everything is in the same projection, we can get the monthy temperature in each of our zones:
 
 ```{r}
 zones_mean_temp <- zonal(sst_monthly, zones_projected)
@@ -708,18 +734,28 @@ zones_mean_temp <- zonal(sst_monthly, zones_projected)
 zones_mean_temp
 ```
 
-We've got a data frame with each column showing the mean temperature in each zone for one month. However, this format is not great for plotting. 
+We've got a data frame with each column showing the mean temperature in each zone for one month. However, this format is not great for plotting. Let's make it into a "long" data frame and add the date as a column:
 
 ```{r}
-zones_mean_temp_t <- t(zones_mean_temp)
+#transpose the data so that the rows become columns, then make it into a data frame
+zones_mean_temp_t <- t(zones_mean_temp) |> 
+as.data.frame() 
 
-plot_data <- cbind(names = rownames(zones_mean_temp_t), zones_mean_temp_t)
+#add date column in proper format - use 1st day of month as the day for all values
+zones_mean_temp_t$ym <- gsub("ym_", "",  rownames(zones_mean_temp_t)) |> 
+paste0("01") |>
+as.Date(format = "%Y%m%d")
 ```
 
 
-We can now plot a time series of temperature in our zones:
+We can now plot a time series of temperature in our zones. The most northerly zone (red line) has the highest temperatures because it is closer to the equator.
 
 ```{r}
-plot(plot_data$names, plot_data$V1)
+plot(zones_mean_temp_t$ym, zones_mean_temp_t$V1, type = "l", 
+      ylim = c(min(zones_mean_temp_t$V2), max(zones_mean_temp_t$V1)), 
+      col = "red", 
+      xlab = "Date",
+      ylab = "Sea surface temperature (Celsius)")
+lines(zones_mean_temp_t$ym, zones_mean_temp_t$V2, type = "l", col = "blue")
 ```
 
